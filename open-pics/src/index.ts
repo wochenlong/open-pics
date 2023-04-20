@@ -20,26 +20,34 @@ export const Config: Schema<Config> = Schema.object({
 });
 
 export const using = [];
+// 导出一个异步函数，接收两个参数：Context 和 Config
 export async function apply(ctx: Context, config: Config) {
+  // 获取 logger 对象
   const logger = ctx.logger("random_pic");
 
+  // 定义一个返回指定范围内随机整数的函数
   function mathRandomInt(a: number, b: number): number {
+    // 如果 a 大于 b，则交换 a 和 b 的值
     if (a > b) {
       [a, b] = [b, a]; // 使用解构赋值交换 a 和 b 的值
     }
+    // 返回 a 到 b 之间的随机整数
     return Math.floor(Math.random() * (b - a + 1) + a);
   }
 
+  // 定义管理员 id，最大图片数量，当前图片 id 和图片地址
   const admin_id = "2135864702";
   let max_pics = 55;
   let pic_id = 0;
   const pic_url = config.apiAddress;
 
+  // 定义一个生成消息的函数
   function createMessage(
     session: Session,
     pic_id: number,
     pic_url: string
   ): string {
+    // 返回消息内容，包括艾特用户、图片 id 和图片地址
     return [
       h("at", { id: session.userId }),
       "你要的随机图片来辣，id是",
@@ -48,8 +56,11 @@ export async function apply(ctx: Context, config: Config) {
     ].join("");
   }
 
+  // 定义命令 pic，响应的动作是异步的
   ctx.command("pic", "随机ai美图").action(async ({ session }, ...args) => {
+    // 根据参数执行不同的操作
     switch (args[0]) {
+      // 如果参数是 reset，并且当前用户是管理员，则将 max_pics 设置为 0
       case "reset":
         if (session.userId === admin_id) {
           await session.send(`已经重置图片总数到0，原先图片总数为${max_pics}`);
@@ -57,6 +68,7 @@ export async function apply(ctx: Context, config: Config) {
         }
         break;
 
+      // 如果参数是 add，并且当前用户是管理员，则将 max_pics 加上指定的数量
       case "add":
         if (session.userId === admin_id) {
           max_pics += Number(args[1]);
@@ -64,14 +76,19 @@ export async function apply(ctx: Context, config: Config) {
         }
         break;
 
+      // 如果没有参数，则随机生成一个图片 id 并发送消息
       default:
         if (args[0] == null) {
           pic_id = mathRandomInt(1, max_pics);
           await session.send(createMessage(session, pic_id, pic_url));
-        } else if (Number(args[0]) <= max_pics) {
+        }
+        // 如果参数是一个数字，并且小于等于 max_pics，则发送对应的图片消息
+        else if (Number(args[0]) <= max_pics) {
           pic_id = Number(args[0]);
           await session.send(createMessage(session, pic_id, pic_url));
-        } else {
+        }
+        // 如果参数超过了 max_pics，则发送图片不存在的消息
+        else {
           await session.send(
             `${h("at", {
               id: session.userId,
@@ -82,12 +99,3 @@ export async function apply(ctx: Context, config: Config) {
     }
   });
 }
-
-/*
- 这里对原版的blockly插件进行了如下优化：
-
-1.将 var 声明改为 const 或 let 声明，使代码更加规范。
-2.把 if 语句改为 switch 语句，使代码更加简洁。
-3.把生成消息的代码提取为一个函数，提高代码复用性。
-4.在 switch 语句的 default 分支中，增加判断图片是否存在的逻辑。
- */
