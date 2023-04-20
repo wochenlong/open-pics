@@ -1,0 +1,26 @@
+{
+  "name": "koishi-plugin-open-pics",
+  "description": "向世界分享你的xp，做一个有趣且个性化的随机图片插件",
+  "version": "0.0.1",
+  "author": "windsing <oulongchen273@outlook.com>",
+  "contributors": [
+    "windsing <oulongchen273@outlook.com>",
+    "t4wefan <guanghoushi@gmail.com@qq.com>"
+  ],
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "license": "MIT",
+  "scripts": {},
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin"
+  ],
+  "peerDependencies": {
+    "koishi": "4.12.0"
+  }
+}
