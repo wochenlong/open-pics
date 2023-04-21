@@ -1,29 +1,35 @@
 import { Context, Schema, Session, h } from "koishi";
+import { readdir } from "node:fs/promises";
+import { resolve } from "path";
+import { pathToFileURL } from "url";
+import * as fs from "fs";
+import { join } from "node:path";
+import { Random } from "koishi";
+
 export const name = "open-pics";
 
 export const usage = `
-### 向世界分享你的xp
 
-目前支持的图源有:
+向世界分享你的xp
 
-t4wefan的随机ai美图
+在imagePath处填入你的图片文件夹绝对路径即可
 
 `;
+
 export interface Config {
-  apiAddress: string;
+  imagePath: string;
 }
 
 export const Config: Schema<Config> = Schema.object({
-  apiAddress: Schema.string()
-    .description("图源服务器地址")
-    .default("https://drive.t4wefan.pub/d/pics/koishi/"),
+  imagePath: Schema.string().description("图片文件夹路径").default("D:/img/xp"),
 });
 
 export const using = [];
+
 // 导出一个异步函数，接收两个参数：Context 和 Config
 export async function apply(ctx: Context, config: Config) {
   // 获取 logger 对象
-  const logger = ctx.logger("random_pic");
+  const logger = ctx.logger("open-pics");
 
   // 定义一个返回指定范围内随机整数的函数
   function mathRandomInt(a: number, b: number): number {
@@ -34,68 +40,37 @@ export async function apply(ctx: Context, config: Config) {
     // 返回 a 到 b 之间的随机整数
     return Math.floor(Math.random() * (b - a + 1) + a);
   }
-
-  // 定义管理员 id，最大图片数量，当前图片 id 和图片地址
-  const admin_id = "2135864702";
-  let max_pics = 55;
-  let pic_id = 0;
-  const pic_url = config.apiAddress;
-
-  // 定义一个生成消息的函数
-  function createMessage(
-    session: Session,
-    pic_id: number,
-    pic_url: string
-  ): string {
-    // 返回消息内容，包括艾特用户、图片 id 和图片地址
-    return [
-      h("at", { id: session.userId }),
-      "你要的随机图片来辣，id是",
-      pic_id,
-      h("image", { url: `${pic_url}${pic_id}.jpg` }),
-    ].join("");
+  async function getRandomFileIn(path) {
+    const files = await readdir(path);
+    return join(path, Random.pick(files));
   }
 
-  // 定义命令 pic，响应的动作是异步的
-  ctx.command("pic", "随机ai美图").action(async ({ session }, ...args) => {
-    // 根据参数执行不同的操作
-    switch (args[0]) {
-      // 如果参数是 reset，并且当前用户是管理员，则将 max_pics 设置为 0
-      case "reset":
-        if (session.userId === admin_id) {
-          await session.send(`已经重置图片总数到0，原先图片总数为${max_pics}`);
-          max_pics = 0;
-        }
-        break;
+  // 定义一个命令处理函数
+  async function handleCommand(session: Session) {
+    try {
+      // 获取图片文件夹中的所有文件名
+      const files = fs.readdirSync(config.imagePath);
+      // 随机选择一个文件名
+      const fileName = files[mathRandomInt(0, files.length - 1)];
 
-      // 如果参数是 add，并且当前用户是管理员，则将 max_pics 加上指定的数量
-      case "add":
-        if (session.userId === admin_id) {
-          max_pics += Number(args[1]);
-          await session.send(`已更新图片库，现在图片总数为${max_pics}`);
-        }
-        break;
+      // 发送本地图片消息
 
-      // 如果没有参数，则随机生成一个图片 id 并发送消息
-      default:
-        if (args[0] == null) {
-          pic_id = mathRandomInt(1, max_pics);
-          await session.send(createMessage(session, pic_id, pic_url));
-        }
-        // 如果参数是一个数字，并且小于等于 max_pics，则发送对应的图片消息
-        else if (Number(args[0]) <= max_pics) {
-          pic_id = Number(args[0]);
-          await session.send(createMessage(session, pic_id, pic_url));
-        }
-        // 如果参数超过了 max_pics，则发送图片不存在的消息
-        else {
-          await session.send(
-            `${h("at", {
-              id: session.userId,
-            })}你指定的图片不存在，现在一共只有${max_pics}张图`
-          );
-        }
-        break;
+      await session.send(
+        h.image(
+          pathToFileURL(
+            resolve(__dirname, await getRandomFileIn(config.imagePath))
+          ).href
+        )
+      );
+    } catch (error) {
+      logger.error(error.message);
+      await session.send("获取图片失败，请稍后再试");
     }
-  });
+  }
+
+  // 定义一个命令
+  ctx
+    .command("xp", "获取一张随机的 xp 图片")
+    .alias("美图")
+    .action(({ session }, prompt) => handleCommand(session));
 }
