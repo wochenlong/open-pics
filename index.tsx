@@ -10,11 +10,7 @@ export function apply(ctx: Context, _config: Config) {
   ctx.command("piv", "获取图片信息").action(async ({ session }) => {
     const response = await ctx.http.get(`https://api.lolicon.app/setu/v2`);
     const data = response.data;
-    if (data.length === 0) {
-      await session.send("没有找到图片");
-      return;
-    }
-    const pid = data[0].pid;
-    await session.send(`pid: ${pid}`);
+    const tags = data[0].tags;
+    await session.send(`tags: ${tags.join(", ")}`);
   });
 }
